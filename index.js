@@ -30,6 +30,8 @@ async function run() {
 
     const db = client.db("bookPointDB");
     const booksCollection = db.collection("books");
+    const cartCollection = db.collection("cart");
+
 
     /* ========== ROUTES ========== */
 
@@ -79,6 +81,59 @@ app.get("/books/category/:category", async (req, res) => {
 
   res.send(books);
 });
+
+
+///
+// GET /books?page=0&limit=8
+app.get("/books", async (req, res) => {
+  const page = parseInt(req.query.page) || 0;
+  const limit = parseInt(req.query.limit) || 8;
+
+  const books = await booksCollection
+    .find()
+    .skip(page * limit)
+    .limit(limit)
+    .toArray();
+
+  const total = await booksCollection.countDocuments();
+
+  res.send({ books, total });
+});
+
+//add to cart
+app.post("/cart", async (req, res) => {
+  const cartItem = req.body;
+  const result = await cartCollection.insertOne(cartItem);
+  res.send(result);
+});
+
+//email by card books show
+// GET /my-books?email=user@gmail.com
+// GET /my-cart?email=user@gmail.com
+app.get("/my-cart", async (req, res) => {
+  const email = req.query.email;
+
+  if (!email) {
+    return res.status(400).send({ message: "Email required" });
+  }
+
+  const result = await cartCollection
+    .find({ userEmail: email })
+    .toArray();
+
+  res.send(result);
+});
+
+// DELETE cart item by id
+app.delete("/cart/:id", async (req, res) => {
+  const id = req.params.id;
+
+  const query = { _id: new ObjectId(id) };
+  const result = await cartCollection.deleteOne(query);
+
+  res.send(result);
+});
+
 
 
 
