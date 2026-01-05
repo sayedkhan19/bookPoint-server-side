@@ -68,6 +68,18 @@ app.get("/books/:id", async (req, res) => {
   res.send(book);
 });
 
+//get books by category
+// ✅ Get books by category
+app.get("/books/category/:category", async (req, res) => {
+  const category = req.params.category;
+
+  const books = await booksCollection
+    .find({ category })
+    .toArray();
+
+  res.send(books);
+});
+
 
 
     // (optional) GET ALL BOOKS
