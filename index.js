@@ -41,7 +41,20 @@ async function run() {
       const book = req.body;
       const result = await booksCollection.insertOne(book);
       res.send(result);
-    });
+    }); 
+
+
+    //get popular books by rating
+    app.get("/books/popular", async (req, res) => {
+  const popularBooks = await booksCollection
+    .find()
+    .sort({ "rating.average": -1 })
+    .limit(10)
+    .toArray();
+
+  res.send(popularBooks);
+});
+
 
     // (optional) GET ALL BOOKS
     app.get("/books", async (req, res) => {
