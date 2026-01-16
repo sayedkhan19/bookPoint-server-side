@@ -23,12 +23,15 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("✅ MongoDB Connected");
+    // await client.connect();
+    // console.log("✅ MongoDB Connected");
 
     const db = client.db("bookPointDB");
     const booksCollection = db.collection("books");
     const cartCollection = db.collection("cart");
+    const usersCollection = db.collection("users");
+    const reviewsCollection = db.collection("reviews");
+
 
     /* ================= ROUTES ================= */
 
@@ -38,6 +41,93 @@ async function run() {
     });
 
     /* ---------- BOOKS ---------- */
+
+
+
+    //////
+// ADD COMMENT
+/* ================= REVIEWS ================= */
+/* ================= REVIEWS ================= */
+
+// Add review
+
+
+/* ================= REVIEWS ================= */
+
+// Add review
+app.post("/reviews", async (req, res) => {
+  const review = req.body;
+
+  if (!review.bookId || !review.userEmail || !review.comment) {
+    return res.status(400).send({ message: "Invalid review data" });
+  }
+
+  const result = await reviewsCollection.insertOne({
+    ...review,
+    createdAt: new Date(),
+  });
+
+  res.send(result);
+});
+
+// Get reviews by book
+app.get("/reviews/:bookId", async (req, res) => {
+  const bookId = req.params.bookId;
+
+  const reviews = await reviewsCollection
+    .find({ bookId })
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  res.send(reviews);
+});
+
+// Delete review
+app.delete("/reviews/:id", async (req, res) => {
+  const id = req.params.id;
+
+  const result = await reviewsCollection.deleteOne({
+    _id: new ObjectId(id),
+  });
+
+  res.send(result);
+});
+
+
+
+    ////
+
+
+    app.post("/users", async (req, res) => {
+  const user = req.body;
+
+  const query = { email: user.email };
+
+  const isExist = await usersCollection.findOne(query);
+
+  if (isExist) {
+    return res.send({ message: "User already exists" });
+  }
+
+  const newUser = {
+    name: user.name || "Anonymous",
+    email: user.email,
+    role: "user", // ✅ default role
+    provider: user.provider || "password",
+    createdAt: new Date(),
+  };
+
+  const result = await usersCollection.insertOne(newUser);
+  res.send(result);
+});
+
+
+app.get("/users/role/:email", async (req, res) => {
+  const email = req.params.email;
+  const user = await usersCollection.findOne({ email });
+  res.send({ role: user?.role || "user" });
+});
+
 
     // Add book
     app.post("/books", async (req, res) => {
@@ -99,18 +189,22 @@ async function run() {
 
     // Get user cart (🔥 FIXED)
     app.get("/my-cart", async (req, res) => {
-      const email = req.query.email;
+  const email = req.query.email;
 
-      if (!email) {
-        return res.status(400).send({ message: "Email required" });
-      }
+  if (!email) {
+    return res.status(400).send({ message: "Email required" });
+  }
 
-      const cartItems = await cartCollection
-        .find({ userEmail: email })
-        .toArray();
+  const cartItems = await cartCollection.find({
+    $or: [
+      { userEmail: email }, // ✅ new correct field
+      { email: email }      // ⚠️ old wrong field
+    ]
+  }).toArray();
 
-      res.send(cartItems);
-    });
+  res.send(cartItems);
+});
+
 
     // Delete cart item
     app.delete("/cart/:id", async (req, res) => {
@@ -119,6 +213,120 @@ async function run() {
       });
       res.send(result);
     });
+
+
+// GET ALL BOOKS (for /all-books page)
+app.get("/books", async (req, res) => {
+  const books = await booksCollection.find().toArray();
+  res.send(books);
+});
+
+
+// ADD TO CART
+app.post("/cart", async (req, res) => {
+  const cartItem = req.body;
+
+  // 🔒 validation
+  if (!cartItem.userEmail || !cartItem.bookId) {
+    return res.status(400).send({ message: "Invalid cart data" });
+  }
+
+  // 🔁 If same user adds same book → increase quantity
+  const existingItem = await cartCollection.findOne({
+    userEmail: cartItem.userEmail,
+    bookId: cartItem.bookId,
+  });
+
+  if (existingItem) {
+    const result = await cartCollection.updateOne(
+      { _id: existingItem._id },
+      { $inc: { quantity: 1 } }
+    );
+    return res.send({ message: "Quantity updated", result });
+  }
+
+  // ➕ New cart item
+  const result = await cartCollection.insertOne({
+    ...cartItem,
+    quantity: cartItem.quantity || 1,
+    addedAt: new Date(),
+  });
+
+  res.send(result);
+});
+
+
+// 🔎 SEARCH BOOKS (name or author)
+app.get("/books/search", async (req, res) => {
+  const query = req.query.q;
+
+  if (!query) {
+    return res.send([]);
+  }
+
+  const result = await booksCollection
+    .find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { author: { $regex: query, $options: "i" } },
+      ],
+    })
+    .limit(8)
+    .toArray();
+
+  res.send(result);
+});
+
+
+// 🔍 PROFESSIONAL SEARCH (name + author)
+// 🔍 Smart Book Search
+app.get("/books/search", async (req, res) => {
+  const q = req.query.q;
+
+  if (!q || q.trim().length < 1) {
+    return res.send([]);
+  }
+
+  const regex = new RegExp(q, "i"); // case-insensitive
+
+  const books = await booksCollection
+    .find({
+      $or: [
+        { name: regex },
+        { author: regex },
+      ],
+    })
+    .limit(8)
+    .toArray();
+
+  res.send(books);
+});
+
+
+
+
+
+    //
+    // UPDATE CART QUANTITY
+app.patch("/cart/:id", async (req, res) => {
+  const { quantity } = req.body;
+  const id = req.params.id;
+
+  if (quantity < 1) {
+    return res.status(400).send({ message: "Quantity must be at least 1" });
+  }
+
+  const result = await cartCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { quantity } }
+  );
+
+  res.send(result);
+});
+
+
+
+    ///
 
   } catch (error) {
     console.error(error);
