@@ -69,6 +69,23 @@ app.get("/books/search", async (req, res) => {
 
 
 
+
+app.post("/orders", async (req, res) => {
+  const order = req.body;
+
+  if (!order.userEmail || !order.items?.length) {
+    return res.status(400).send({ message: "Invalid order data" });
+  }
+
+  const result = await ordersCollection.insertOne({
+    ...order,
+    createdAt: new Date(),
+  });
+
+  res.send(result);
+});
+
+
 /////////////////////////////////////////////
 
 // Add review
