@@ -107,6 +107,18 @@ app.get("/admin/orders", async (req, res) => {
   res.send(orders);
 });
 
+// UPDATE ORDER STATUS
+app.patch("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  const result = await ordersCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { orderStatus: status } }
+  );
+
+  res.send(result);
+});
 
 /////////////////////////////////////////////
 
