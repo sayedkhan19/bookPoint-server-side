@@ -120,6 +120,36 @@ app.patch("/orders/:id", async (req, res) => {
   res.send(result);
 });
 
+
+
+/////user for google log in
+app.post("/users", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).send({ message: "Email required" });
+  }
+
+  const existingUser = await usersCollection.findOne({ email });
+
+  // ✅ Prevent duplicate users
+  if (existingUser) {
+    return res.send({ message: "User already exists" });
+  }
+
+  const user = {
+    name: req.body.name,
+    email: req.body.email,
+    role: "user",
+    provider: req.body.provider, // "password" | "google"
+    createdAt: new Date(),
+  };
+
+  const result = await usersCollection.insertOne(user);
+  res.send(result);
+});
+
+
 /////////////////////////////////////////////
 
 // Add review
