@@ -44,15 +44,49 @@ async function run() {
 
 
 
-    //////
-// ADD COMMENT
-/* ================= REVIEWS ================= */
-/* ================= REVIEWS ================= */
-
-// Add review
 
 
 /* ================= REVIEWS ================= */
+// 🔍 SEARCH BOOKS (name or author)
+app.get("/books/search", async (req, res) => {
+  const query = req.query.q;
+
+  if (!query) {
+    return res.send([]);
+  }
+
+  const result = await booksCollection.find({
+    $or: [
+      { name: { $regex: query, $options: "i" } },   // book name
+      { author: { $regex: query, $options: "i" } }  // author name
+    ]
+  })
+  .limit(8) // limit for dropdown
+  .toArray();
+
+  res.send(result);
+});
+
+
+
+
+app.post("/orders", async (req, res) => {
+  const order = req.body;
+
+  if (!order.userEmail || !order.items?.length) {
+    return res.status(400).send({ message: "Invalid order data" });
+  }
+
+  const result = await ordersCollection.insertOne({
+    ...order,
+    createdAt: new Date(),
+  });
+
+  res.send(result);
+});
+
+
+/////////////////////////////////////////////
 
 // Add review
 app.post("/reviews", async (req, res) => {
