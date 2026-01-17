@@ -85,6 +85,13 @@ app.post("/orders", async (req, res) => {
   res.send(result);
 });
 
+// CREATE ORDER
+app.post("/orders", async (req, res) => {
+  const order = req.body;
+  const result = await ordersCollection.insertOne(order);
+  res.send({ ...order, _id: result.insertedId });
+});
+
 
 /////////////////////////////////////////////
 
