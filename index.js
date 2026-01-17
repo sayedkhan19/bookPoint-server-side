@@ -98,6 +98,16 @@ app.get("/orders", async (req, res) => {
 });
 
 
+// GET ALL ORDERS (ADMIN)
+app.get("/admin/orders", async (req, res) => {
+  const orders = await ordersCollection
+    .find()
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.send(orders);
+});
+
+
 /////////////////////////////////////////////
 
 // Add review
