@@ -86,6 +86,18 @@ app.post("/orders", async (req, res) => {
 });
 
 
+
+// GET USER ORDERS
+app.get("/orders", async (req, res) => {
+  const email = req.query.email;
+  const orders = await ordersCollection
+    .find({ userEmail: email })
+    .sort({ createdAt: -1 })
+    .toArray();
+  res.send(orders);
+});
+
+
 /////////////////////////////////////////////
 
 // Add review
